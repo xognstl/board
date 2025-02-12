@@ -3,12 +3,14 @@ package hello.board.comment.service;
 import hello.board.comment.entity.Comment;
 import hello.board.comment.repository.CommentRepository;
 import hello.board.comment.service.request.CommentCreateRequest;
+import hello.board.comment.service.response.CommentPageResponse;
 import hello.board.comment.service.response.CommentResponse;
 import hello.board.common.snowflake.Snowflake;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.function.Predicate;
 
 import static java.util.function.Predicate.not;
@@ -76,5 +78,22 @@ public class CommentService {
                     .filter(not(this::hasChildren)) // 자식이 없어야 지울수 있다.
                     .ifPresent(this::delete);   // 삭제 수행
         }
+    }
+
+    public CommentPageResponse readAll(Long articleId, Long page, Long pageSize) {
+        return CommentPageResponse.of(
+                commentRepository.findAll(articleId, (page - 1) * pageSize, pageSize).stream()
+                        .map(CommentResponse::from)
+                        .toList(),
+                commentRepository.count(articleId, PageLimitCalculator.calculatePageLimit(page, pageSize, 10L))
+        );
+    }
+
+    // 무한 스크롤
+    public List<CommentResponse> readAll(Long articleId, Long lastParentCommentId, Long lastCommentId, Long limit) {
+        List<Comment> comments = lastParentCommentId == null || lastCommentId == null ?
+                commentRepository.findAllInfiniteScroll(articleId, limit) :
+                commentRepository.findAllInfiniteScroll(articleId, lastParentCommentId, lastCommentId, limit);
+        return comments.stream().map(CommentResponse::from).toList();
     }
 }
