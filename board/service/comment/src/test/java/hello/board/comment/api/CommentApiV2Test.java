@@ -4,11 +4,14 @@ import hello.board.comment.service.response.CommentPageResponse;
 import hello.board.comment.service.response.CommentResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.*;
 
 public class CommentApiV2Test {
     RestClient restClient = RestClient.create("http://localhost:9001");
@@ -136,6 +139,28 @@ public class CommentApiV2Test {
         for (CommentResponse response : response2) {
             System.out.println("response.getCommentId() = " + response.getCommentId());
         }
+    }
+
+    @Test
+    void countTest() {
+        CommentResponse commentResponse = create(new CommentCreateRequestV2(2L, "my comment1", null, 1L));
+
+        Long count1 = restClient.get()
+                .uri("/v2/comments/articles/{articleId}/count", 2L)
+                .retrieve()
+                .body(Long.class);
+        System.out.println("count1 = " + count1);
+        assertThat(count1).isEqualTo(1L);
+
+        restClient.delete()
+                .uri("/v2/comments/{commentId}", commentResponse.getCommentId())
+                .retrieve();
+        Long count2 = restClient.get()
+                .uri("/v2/comments/articles/{articleId}/count", 2L)
+                .retrieve()
+                .body(Long.class);
+        System.out.println("count1 = " + count2);
+        assertThat(count2).isEqualTo(0L);
     }
 
     @Getter

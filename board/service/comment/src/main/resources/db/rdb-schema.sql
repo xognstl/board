@@ -17,3 +17,8 @@ create table comment_v2 (
     deleted bool not null,
     created_at datetime not null
 );
+
+create table article_comment_count (
+    article_id bigint not null primary key,
+    comment_count bigint not null
+);

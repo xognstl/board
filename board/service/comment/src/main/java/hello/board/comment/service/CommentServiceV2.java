@@ -1,8 +1,10 @@
 package hello.board.comment.service;
 
+import hello.board.comment.entity.ArticleCommentCount;
 import hello.board.comment.entity.Comment;
 import hello.board.comment.entity.CommentPath;
 import hello.board.comment.entity.CommentV2;
+import hello.board.comment.repository.ArticleCommentCountRepository;
 import hello.board.comment.repository.CommentRepositoryV2;
 import hello.board.comment.service.request.CommentCreateRequestV2;
 import hello.board.comment.service.response.CommentPageResponse;
@@ -21,6 +23,7 @@ import static java.util.function.Predicate.not;
 public class CommentServiceV2 {
     private final Snowflake snowflake = new Snowflake();
     private final CommentRepositoryV2 commentRepository;
+    private final ArticleCommentCountRepository articleCommentCountRepository;
 
     @Transactional
     public CommentResponse create(CommentCreateRequestV2 request) {
@@ -38,6 +41,15 @@ public class CommentServiceV2 {
                 )
             )
         );
+        /* total 댓글 수 증가 S */
+        int result = articleCommentCountRepository.increase(request.getArticleId());
+        if (result == 0) {
+            articleCommentCountRepository.save(
+                    ArticleCommentCount.init(request.getArticleId(), 1L)
+            );
+        }
+        /* total 댓글 수 증가 E */
+
         return CommentResponse.from(comment);
     }
 
@@ -81,6 +93,9 @@ public class CommentServiceV2 {
 
     private void delete(CommentV2 comment) {
         commentRepository.delete(comment);
+        /* total 게시글 수 감소 S */
+        articleCommentCountRepository.decrease(comment.getArticleId());
+        /* total 게시글 수 감소 E */
         if(!comment.isRoot()){  // 삭제된 상위 댓글을 찾아 지워야한다. (상위 댓글이 삭제됬어도 자식이 있어서 못 지워진 경우)
             commentRepository.findByPath(comment.getCommentPath().getParentPath())
                     .filter(CommentV2::getDeleted)    // delete true
@@ -96,6 +111,7 @@ public class CommentServiceV2 {
                         .map(CommentResponse::from)
                         .toList(),
                 commentRepository.count(articleId, PageLimitCalculator.calculatePageLimit(page, pageSize, 10L))
+//                count(articleId)
         );
     }
 
@@ -104,5 +120,11 @@ public class CommentServiceV2 {
                 commentRepository.findAllInfiniteScroll(articleId, pageSize) :
                 commentRepository.findAllInfiniteScroll(articleId, lastPath, pageSize);
         return comments.stream().map(CommentResponse::from).toList();
+    }
+
+    public Long count(Long articleId) {
+        return articleCommentCountRepository.findById(articleId)
+                .map(ArticleCommentCount::getCommentCount)
+                .orElse(0L);
     }
 }
