@@ -1,2 +1,22 @@
 server:
   port: 9004
+
+spring:
+  application:
+    name: hello-board-hot-article-service
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: hello-board-hot-article-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+# 게시글 서비스 호출 정보
+endpoints:
+  hello-board-article-service:
+    url: http://127.0.0.1:9000
+
