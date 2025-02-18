@@ -15,6 +15,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @EnableAsync    // 트랜잭션이 끝나면 kafka에 대한 이벤트 전송을 비동기로 처리
 @Configuration
@@ -35,9 +36,22 @@ public class MessageRelayConfig {
         return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(configProps));
     }
 
+
+    // 트랜잭션이 끝날 떄마다 이벤트 전송을 비동기로 전송하기 위해 처리하는 스레드 풀
     @Bean
     public Executor messageRelayPublishEventExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        return null;
+        executor.setCorePoolSize(20);
+        executor.setMaxPoolSize(10);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("mr-pub-event-");
+        return executor;
+    }
+
+    // 이벤트 전송이 아직 되지 않은 것들 10초 이후에 이벤트를 주기적으로 보내주기 위한 스레드풀
+    @Bean
+    public Executor messageRelayPublishPendingEventExecutor() {
+        // 각 애플리케이션 마다 shard 가 분할 되어 할당 되기 떄문에 싱글스레드로 미전송 이벤트 전송
+        return Executors.newSingleThreadExecutor();
     }
 }
