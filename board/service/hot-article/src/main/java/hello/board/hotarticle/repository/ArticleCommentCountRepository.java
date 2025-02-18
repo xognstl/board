@@ -20,9 +20,9 @@ public class ArticleCommentCountRepository {
     //hot-article::article::{articleId}::comment-count
     private static final String KEY_FORMAT = "hot-article::article::%s::comment-count";
 
-    private void createOrUpdate(Long articleId, String commentCount, Duration ttl) {
+    public void createOrUpdate(Long articleId, Long commentCount, Duration ttl) {
         //인기글이 선정될때까지만 가지고 있으면 되니까 시간만료
-        redisTemplate.opsForValue().set(generateKey(articleId), commentCount, ttl);// set 데이터가 있으면 update 없으면 create
+        redisTemplate.opsForValue().set(generateKey(articleId), String.valueOf(commentCount), ttl);// set 데이터가 있으면 update 없으면 create
     }
 
     //조회

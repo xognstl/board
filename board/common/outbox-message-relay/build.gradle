@@ -1,0 +1,9 @@
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starer-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starer-data-redis'
+    implementation 'org.springframework.kafka:spring-kafka'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    implementation project(':common:snowflake')
+    implementation project(':common:event')
+    implementation project(':common:data-serializer')
+}
