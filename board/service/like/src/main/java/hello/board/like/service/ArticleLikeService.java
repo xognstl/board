@@ -1,5 +1,10 @@
 package hello.board.like.service;
 
+import hello.board.common.event.EventType;
+import hello.board.common.event.payload.ArticleLikedEventPayload;
+import hello.board.common.event.payload.ArticleUnikedEventPayload;
+import hello.board.common.event.payload.CommentCreatedEventPayload;
+import hello.board.common.outboxmessagerelay.OutboxEventPublisher;
 import hello.board.common.snowflake.Snowflake;
 import hello.board.like.entity.ArticleLike;
 import hello.board.like.entity.ArticleLikeCount;
@@ -15,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ArticleLikeService {
     private final Snowflake snowflake = new Snowflake();
     private final ArticleLikeRepository articleLikeRepository;
+    private final OutboxEventPublisher outboxEventPublisher;
     private final ArticleLikeCountRepository articleLikeCountRepository;
 
     public ArticleLikeResponse read(Long articleId, Long userId) {  // 사용자가 좋아요 했는지 유무
@@ -26,13 +32,13 @@ public class ArticleLikeService {
     // update 구문
     @Transactional
     public void likePessimisticLock1(Long articleId, Long userId) { // 좋아요 수행
-        articleLikeRepository.save(
+        ArticleLike articleLike = articleLikeRepository.save(
                 ArticleLike.create(
                         snowflake.nextId(),
                         articleId,
                         userId
                 )
-        ); // unique index 떄문에 한건만 데이터 생성
+        );// unique index 떄문에 한건만 데이터 생성
 
         int result = articleLikeCountRepository.increase(articleId);
         System.out.println("result = " + result);
@@ -44,6 +50,18 @@ public class ArticleLikeService {
             );
         }
 
+        /* kafka에 event 발행 */
+        outboxEventPublisher.publish(
+                EventType.ARTICLE_LIKED,
+                ArticleLikedEventPayload.builder()
+                        .articleLikeId(articleLike.getArticleLikeId())
+                        .articleId(articleLike.getArticleId())
+                        .userId(articleLike.getUserId())
+                        .createdAt(articleLike.getCreatedAt())
+                        .articleLikeCount(count(articleLike.getArticleId()))
+                        .build(),
+                articleLike.getArticleId()
+        );
     }
 
     @Transactional
@@ -52,6 +70,18 @@ public class ArticleLikeService {
                 .ifPresent(articleLike -> {
                             articleLikeRepository.delete(articleLike);
                             articleLikeCountRepository.decrease(articleId);
+                    /* kafka에 event 발행 */
+                    outboxEventPublisher.publish(
+                            EventType.ARTICLE_UNLIKED,
+                            ArticleUnikedEventPayload.builder()
+                                    .articleLikeId(articleLike.getArticleLikeId())
+                                    .articleId(articleLike.getArticleId())
+                                    .userId(articleLike.getUserId())
+                                    .createdAt(articleLike.getCreatedAt())
+                                    .articleLikeCount(count(articleLike.getArticleId()))
+                                    .build(),
+                            articleLike.getArticleId()
+                    );
                 });
     }
 

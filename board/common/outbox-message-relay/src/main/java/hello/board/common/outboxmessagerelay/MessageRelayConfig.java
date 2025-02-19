@@ -22,7 +22,7 @@ import java.util.concurrent.Executors;
 @ComponentScan("hello.board.common.outboxmessagerelay")
 @EnableScheduling   // 전송되지 않은 이벤트를 주기적으로 가져와서 polling 해 kafka로  보낼것
 public class MessageRelayConfig {
-    @Value("${spring.kafka.bootstrap-servers")
+    @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     @Bean   // kafka 로 프로듀서 애플리케이션들이 이벤트를 전송
@@ -42,7 +42,7 @@ public class MessageRelayConfig {
     public Executor messageRelayPublishEventExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(20);
-        executor.setMaxPoolSize(10);
+        executor.setMaxPoolSize(50);
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("mr-pub-event-");
         return executor;
@@ -52,6 +52,6 @@ public class MessageRelayConfig {
     @Bean
     public Executor messageRelayPublishPendingEventExecutor() {
         // 각 애플리케이션 마다 shard 가 분할 되어 할당 되기 떄문에 싱글스레드로 미전송 이벤트 전송
-        return Executors.newSingleThreadExecutor();
+        return Executors.newSingleThreadScheduledExecutor();
     }
 }

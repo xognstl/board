@@ -37,10 +37,10 @@ public class MessageRelay {
 
     private void publishEvent(Outbox outbox) {
         try {
+                // kafka에 전송하는 키, shard 키면 동일한 kafka 파티션으로 전송, 동일한 카프카 파티션으로 전송되면 순서 보장
+                // outbox가 동일한 shardkey에 대해서는 카프카에서 동일한 순서로 전송된다.
             messageRelayTemplate.send(
                     outbox.getEventType().getTopic(),
-                    // kafka에 전송하는 키, shard 키면 동일한 kafka 파티션으로 전송, 동일한 카프카 파티션으로 전송되면 순서 보장
-                    // outbox가 동일한 shardkey에 대해서는 카프카에서 동일한 순서로 전송된다.
                     String.valueOf(outbox.getShardKey()),
                     outbox.getPayload()
             ).get(1, TimeUnit.SECONDS) ; //get 하면 결과를 기달릴 수있따.
