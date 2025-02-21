@@ -6,7 +6,15 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.*;
 
 @Repository
 @RequiredArgsConstructor
@@ -42,5 +50,15 @@ public class ArticleQueryModelRepository {
 
     private String generateKey(Long articleId) {
         return KEY_FORMAT.formatted(articleId);
+    }
+
+    public Map<Long, ArticleQueryModel> readAll(List<Long> articleIds) {
+        List<String> keyList = articleIds.stream().map(this::generateKey).toList();
+        // multiget : 리스트를 전달해서 여러개의 데이터 한번에 조회
+        return redisTemplate.opsForValue().multiGet(keyList).stream()
+                .filter(Objects::nonNull)
+                .map(json -> DataSerializer.deserialize(json, ArticleQueryModel.class))
+                .collect(toMap(ArticleQueryModel::getArticleId, identity()));
+
     }
 }
